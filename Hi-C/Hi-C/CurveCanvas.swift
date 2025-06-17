@@ -33,7 +33,8 @@ struct CurveCanvas: View {
     var body: some View {
         Canvas { context, size in
             let paths = cgPathsFromCoordinates(coordinates)
-            let splitPath = cgSplitPathFromCoordinates(coordinates)
+            let splitPath = cgSplitPathsFromCoordinates(coordinates)
+            let transitionPoints = cgTransitionPointsFromCoordinates(coordinates)
             
             if channels{
                 let depthPath = paths.0.applying(CGAffineTransform(translationX: 0, y: CGFloat(channelDepth) * cgScaling))
@@ -50,6 +51,18 @@ struct CurveCanvas: View {
                 // Sectioned Path
                 for (index, path) in splitPath.enumerated() {
                     context.stroke(path, with: colors[index], lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
+                }
+                // Gradient Transitions
+                for (index, pointPair) in transitionPoints.enumerated() {
+                    let transitionColors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple]
+                    let startPoint = pointPair.0
+                    let endPoint = pointPair.1
+                    let path = Path{ path in
+                        path.addLines([startPoint, endPoint])
+                    }
+                    let gradient = Gradient(colors: Array(transitionColors[index...index+1]))
+                    let gcGradient = GraphicsContext.Shading.linearGradient(gradient, startPoint: startPoint, endPoint: endPoint)
+                    context.stroke(path, with: gcGradient, lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
                 }
                 if markers {
                     context.fill(paths.1, with: .color(.secondary))
@@ -98,7 +111,7 @@ struct CurveCanvas: View {
         return (scaledLinePath, scaledMarkerPath)
     }
     
-    private func cgSplitPathFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [Path] {
+    private func cgSplitPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [Path] {
         let cgCoordinates = coordinates.map{ CGPoint(x: CGFloat($0.0) * CGFloat(spacing), y: CGFloat($0.1) * CGFloat(spacing))}
         
         var splitPaths: [Path] = []
@@ -108,9 +121,9 @@ struct CurveCanvas: View {
             let startPoint = (cgCoordinates.count/splits) * i
             var endPoint = cgCoordinates.count/splits * (i+1) - 1
             
-            // Add first point from the next path
+            // Add two points from the next path
             if i != splits - 1 {
-                endPoint += 1
+                endPoint += 2
             }
             
             let coordinateSlice = Array(cgCoordinates[startPoint...endPoint])
@@ -124,9 +137,32 @@ struct CurveCanvas: View {
         return splitPaths
     }
     
+    private func cgTransitionPointsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [(CGPoint, CGPoint)] {
+        let cgCoordinates = coordinates.map{ CGPoint(x: CGFloat($0.0) * CGFloat(spacing), y: CGFloat($0.1) * CGFloat(spacing))}
+        
+        var transitionPoints: [(CGPoint, CGPoint)] = []
+        let transitions = colors.count - 1
+        
+        for i in 0..<transitions {
+            let startPoint = (cgCoordinates.count/colors.count) * (i + 1)
+            let endPoint = startPoint + 1
+            
+            var scaledSlice: [CGPoint] = []
+            let coordinateSlice = Array(cgCoordinates[startPoint...endPoint])
+            for coordinate in coordinateSlice {
+                let offsetPoint = CGPoint(x: coordinate.x + CGFloat(lineWidth), y: coordinate.y + CGFloat(lineWidth))
+                let scaledPoint = CGPoint(x: offsetPoint.x * CGFloat(scale) * cgScaling, y: offsetPoint.y * CGFloat(scale) * cgScaling)
+                scaledSlice.append(scaledPoint)
+            }
+            
+            transitionPoints.append((scaledSlice[0], scaledSlice[1]))
+        }
+        return transitionPoints
+    }
+    
     private func cgBarPathFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> Path {
         let edgeLength = pathEdgeLength(coordinates)
-        let roundedRect = CGRect(origin: CGPoint(x: 0, y: CGFloat(edgeLength)), size: CGSize(width: Double(edgeLength), height: CGFloat(lineWidth)))
+        let roundedRect = CGRect(origin: CGPoint(x: 0, y: CGFloat(edgeLength)), size: CGSize(width: Double(edgeLength-2), height: CGFloat(lineWidth)))
         let barPath = Path{ path in
             path.addRoundedRect(in: roundedRect, cornerSize: CGSize(width: 5, height: 5))
         }
@@ -140,7 +176,7 @@ struct CurveCanvas: View {
         
         let measurePath = Path{ path in
             path.move(to: CGPoint(x: CGFloat(edgeLength), y: 0))
-            path.addLine(to: CGPoint(x: CGFloat(edgeLength), y: CGFloat(edgeLength)))
+            path.addLine(to: CGPoint(x: CGFloat(edgeLength), y: CGFloat(edgeLength-2)))
         }
         let offsetPath = measurePath.applying(CGAffineTransform(translationX: CGFloat(lineWidth), y: CGFloat(lineWidth)))
         let scaledPath = offsetPath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
