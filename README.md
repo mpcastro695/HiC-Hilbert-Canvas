@@ -2,7 +2,7 @@
 
 ##### 🔍 Submitted as a final project for CS50x
 
-A macOS app for visualizing 2D space-filling Hilbert curves. Adjust curve parameters such as the spacing between nodes, the width of the connecting paths, and the diameter of your node markers. See stats such as path length, path area, and path volume updated as you build your curve. Once it's how you like it, export a copy as a vector-based PDF.
+A macOS app for visualizing 2D Hilbert curves. Adjust curve parameters such as the spacing between nodes, the width of the connecting paths, and the diameter of your node markers. See stats such as path length, path area, and path volume updated as you build your curve. Once it's how you like it, export a copy as a vector-based PDF.
 #### Demo:  <https://youtu.be/7LzKyFsDkqs>
 ![Alt text](<Screenshot.png>)
 

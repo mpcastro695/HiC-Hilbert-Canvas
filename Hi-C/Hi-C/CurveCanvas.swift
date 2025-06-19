@@ -20,7 +20,7 @@ struct CurveCanvas: View {
     @Binding var dxf: Bool
     @Binding var scale: Float
     
-    var cgScaling: CGFloat = 2
+    let cgScaling: CGFloat = 2
     let colors: [GraphicsContext.Shading] = [GraphicsContext.Shading.color(.red),
                                              GraphicsContext.Shading.color(.orange),
                                              GraphicsContext.Shading.color(.yellow),
@@ -31,65 +31,81 @@ struct CurveCanvas: View {
                                              GraphicsContext.Shading.color(.purple)]
     
     var body: some View {
-        Canvas { context, size in
-            let paths = cgPathsFromCoordinates(coordinates)
-            let splitPath = cgSplitPathsFromCoordinates(coordinates)
-            let transitionPoints = cgTransitionPointsFromCoordinates(coordinates)
-            
-            if channels{
-                let depthPath = paths.0.applying(CGAffineTransform(translationX: 0, y: CGFloat(channelDepth) * cgScaling))
-                context.stroke(depthPath, with: .linearGradient(Gradient(colors: [Color.red, Color.green, Color.blue, Color.yellow]), startPoint: paths.0.currentPoint!, endPoint: paths.0.cgPath.boundingBox.origin), lineWidth: CGFloat(channelDepth)*cgScaling*CGFloat(scale))
-                context.stroke(depthPath, with: .color(white: 0, opacity: 0.2), lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
-            }
-            if dxf {
-                // Single Path
-                context.stroke(paths.0, with: .color(.black), lineWidth:  CGFloat(lineWidth)*cgScaling*CGFloat(scale))
-                if markers {
-                    context.fill(paths.1, with: .color(.black))
-                }
-            }else{
-                // Sectioned Path
-                for (index, path) in splitPath.enumerated() {
-                    context.stroke(path, with: colors[index], lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
-                }
-                // Gradient Transitions
-                for (index, pointPair) in transitionPoints.enumerated() {
-                    let transitionColors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple]
-                    let startPoint = pointPair.0
-                    let endPoint = pointPair.1
-                    let path = Path{ path in
-                        path.addLines([startPoint, endPoint])
+        
+        let paths = cgPathsFromCoordinates(coordinates)
+        let splitPath = cgSplitPathsFromCoordinates(coordinates)
+        let transitionPoints = cgTransitionPointsFromCoordinates(coordinates)
+        
+        ZStack{
+            // MARK: - Depth Canvas
+            Canvas { context, size in
+                if channels{
+                    let depthPaths = cgDepthPathsFromCoordinates(coordinates)
+                    for depthPath in depthPaths{
+                        context.stroke(depthPath, with: .linearGradient(Gradient(colors: [Color.red, Color.green, Color.blue, Color.yellow]), startPoint: paths.0.currentPoint!, endPoint: paths.0.cgPath.boundingBox.origin), lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
                     }
-                    let gradient = Gradient(colors: Array(transitionColors[index...index+1]))
-                    let gcGradient = GraphicsContext.Shading.linearGradient(gradient, startPoint: startPoint, endPoint: endPoint)
-                    context.stroke(path, with: gcGradient, lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
-                }
-                if markers {
-                    context.fill(paths.1, with: .color(.secondary))
                 }
             }
-            let barPath = cgBarPathFromCoordinates(coordinates)
-            let gradient = Gradient(colors: [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple])
-            context.fill(barPath, with: .linearGradient(gradient, startPoint: CGPoint(x: barPath.boundingRect.minX, y: barPath.boundingRect.midY), endPoint: CGPoint(x: barPath.boundingRect.maxX, y: barPath.boundingRect.midY)))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .layoutPriority(0)
+            .opacity(0.6)
             
-            let nIndices = Float(sqrt(Double(coordinates.count)))
-            let edgelength = nIndices * (spacing)
-            let label = Text(String(format: "%.1f mm", edgelength)).foregroundColor(.primary).font(.caption)
-            
-            let measurePath = cgMeasurePathFromCoordinates(coordinates)
-            context.stroke(measurePath, with: .color(.secondary), style: StrokeStyle(lineWidth: 2, dash: [CGFloat(spacing) * cgScaling]))
-            context.translateBy(x: CGFloat(edgelength+spacing+lineWidth) * cgScaling * CGFloat(scale), y: CGFloat(edgelength) * cgScaling * CGFloat(scale) / 2)
-            context.rotate(by: Angle(degrees: 90))
-            context.draw(label, in: CGRect(origin: CGPoint(x: -20, y: -10), size: CGSize(width: 80, height: 10)))
-            
-        }//END CANVAS
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .layoutPriority(1)
+            // MARK: - Main Canvas
+            Canvas { context, size in
+                if dxf {
+                    // Single Path
+                    context.stroke(paths.0, with: .color(.black), lineWidth:  CGFloat(lineWidth)*cgScaling*CGFloat(scale))
+                    if markers {
+                        context.fill(paths.1, with: .color(.black))
+                    }
+                }else{
+                    // Sectioned Path
+                    for (index, path) in splitPath.enumerated() {
+                        context.stroke(path, with: colors[index], lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
+                    }
+                    // Gradient Transitions
+                    for (index, pointPair) in transitionPoints.enumerated() {
+                        let transitionColors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple]
+                        let startPoint = pointPair.0
+                        let endPoint = pointPair.1
+                        let path = Path{ path in
+                            path.addLines([startPoint, endPoint])
+                        }
+                        let gradient = Gradient(colors: Array(transitionColors[index...index+1]))
+                        let gcGradient = GraphicsContext.Shading.linearGradient(gradient, startPoint: startPoint, endPoint: endPoint)
+                        context.stroke(path, with: gcGradient, lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
+                    }
+                    if markers {
+                        context.fill(paths.1, with: .color(.secondary))
+                    }
+                }
+                let barPath = cgBarPathFromCoordinates(coordinates)
+                let gradient = Gradient(colors: [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple])
+                context.fill(barPath, with: .linearGradient(gradient, startPoint: CGPoint(x: barPath.boundingRect.minX, y: barPath.boundingRect.midY), endPoint: CGPoint(x: barPath.boundingRect.maxX, y: barPath.boundingRect.midY)))
+                
+                let nIndices = Float(sqrt(Double(coordinates.count)))
+                let edgelength = nIndices * (spacing)
+                let label = Text(String(format: "%.1f mm", edgelength)).foregroundColor(.primary).font(.caption)
+                
+                let measurePath = cgMeasurePathFromCoordinates(coordinates)
+                context.stroke(measurePath, with: .color(.secondary), style: StrokeStyle(lineWidth: 2, dash: [CGFloat(spacing) * cgScaling]))
+                context.translateBy(x: CGFloat(edgelength+spacing+lineWidth) * cgScaling * CGFloat(scale), y: CGFloat(edgelength) * cgScaling * CGFloat(scale) / 2)
+                context.rotate(by: Angle(degrees: 90))
+                context.draw(label, in: CGRect(origin: CGPoint(x: -20, y: -10), size: CGSize(width: 80, height: 10)))
+                
+            }//END MAIN CANVAS
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .layoutPriority(1)
+        }
 
     }
     
+    private func cgCoordinatesFromCartesian(_ coordinates: [(UInt16, UInt16)]) -> [CGPoint] {
+        return coordinates.map{ CGPoint(x: CGFloat($0.0) * CGFloat(spacing), y: CGFloat($0.1) * CGFloat(spacing))}
+    }
+    
     private func cgPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> (Path, Path) {
-        let cgCoordinates = coordinates.map{ CGPoint(x: CGFloat($0.0) * CGFloat(spacing), y: CGFloat($0.1) * CGFloat(spacing))}
+        let cgCoordinates = cgCoordinatesFromCartesian(coordinates)
         let linePath = Path { path in
             path.move(to: cgCoordinates[0])
             for point in cgCoordinates {
@@ -112,7 +128,7 @@ struct CurveCanvas: View {
     }
     
     private func cgSplitPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [Path] {
-        let cgCoordinates = coordinates.map{ CGPoint(x: CGFloat($0.0) * CGFloat(spacing), y: CGFloat($0.1) * CGFloat(spacing))}
+        let cgCoordinates = cgCoordinatesFromCartesian(coordinates)
         
         var splitPaths: [Path] = []
         let splits = colors.count
@@ -138,7 +154,7 @@ struct CurveCanvas: View {
     }
     
     private func cgTransitionPointsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [(CGPoint, CGPoint)] {
-        let cgCoordinates = coordinates.map{ CGPoint(x: CGFloat($0.0) * CGFloat(spacing), y: CGFloat($0.1) * CGFloat(spacing))}
+        let cgCoordinates = cgCoordinatesFromCartesian(coordinates)
         
         var transitionPoints: [(CGPoint, CGPoint)] = []
         let transitions = colors.count - 1
@@ -158,6 +174,29 @@ struct CurveCanvas: View {
             transitionPoints.append((scaledSlice[0], scaledSlice[1]))
         }
         return transitionPoints
+    }
+    
+    private func cgDepthPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [Path] {
+        let path = cgPathsFromCoordinates(coordinates).0
+        let pathCount = Int(ceil(channelDepth/lineWidth))
+        
+        var depthPaths: [Path] = []
+        if pathCount<=1 {
+            let offsetPath = path.applying(CGAffineTransform(translationX: 0, y: CGFloat(channelDepth*scale)*cgScaling))
+            depthPaths.append(offsetPath)
+        }else{
+            for i in 1...pathCount {
+                if i==pathCount && floor(channelDepth/lineWidth) != channelDepth/lineWidth {
+                    let offset = CGFloat(channelDepth/lineWidth) * cgScaling * CGFloat(scale) * CGFloat(lineWidth)
+                    let offsetPath = path.applying(CGAffineTransform(translationX: 0, y: offset))
+                    depthPaths.append(offsetPath)
+                }else{
+                    let offsetPath = path.applying(CGAffineTransform(translationX: 0, y: CGFloat(lineWidth * Float(i)*scale)*cgScaling))
+                    depthPaths.append(offsetPath)
+                }
+            }
+        }
+        return depthPaths
     }
     
     private func cgBarPathFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> Path {
