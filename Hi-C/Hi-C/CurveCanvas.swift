@@ -40,9 +40,16 @@ struct CurveCanvas: View {
             // MARK: - Depth Canvas
             Canvas { context, size in
                 if channels{
-                    let depthPaths = cgDepthPathsFromCoordinates(coordinates)
-                    for depthPath in depthPaths{
-                        context.stroke(depthPath, with: .linearGradient(Gradient(colors: [Color.red, Color.green, Color.blue, Color.yellow]), startPoint: paths.0.currentPoint!, endPoint: paths.0.cgPath.boundingBox.origin), lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
+                    let depthPaths = cgDepthPathsFromCoordinates(coordinates).0
+                    let markerPaths = cgDepthPathsFromCoordinates(coordinates).1
+                    let gradient = GraphicsContext.Shading.linearGradient(Gradient(colors: [Color.red, Color.green, Color.blue, Color.yellow]), startPoint: paths.0.currentPoint!, endPoint: paths.0.cgPath.boundingBox.origin)
+    
+                    for depthPath in depthPaths {
+                        context.stroke(depthPath, with: gradient, lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
+                    }
+                    if markers{
+                        context.stroke(markerPaths.0, with: gradient, lineWidth: CGFloat(markerDiameter)*cgScaling*CGFloat(scale))
+                        context.fill(markerPaths.1, with: gradient)
                     }
                 }
             }
@@ -60,7 +67,7 @@ struct CurveCanvas: View {
                     }
                 }else{
                     // Sectioned Path
-                    for (index, path) in splitPath.enumerated() {
+                    for (index, path) in splitPath.0.enumerated() {
                         context.stroke(path, with: colors[index], lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
                     }
                     // Gradient Transitions
@@ -76,7 +83,13 @@ struct CurveCanvas: View {
                         context.stroke(path, with: gcGradient, lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
                     }
                     if markers {
-                        context.fill(paths.1, with: .color(.secondary))
+                        if markerDiameter > lineWidth {
+                            for (index, markerPath) in splitPath.1.enumerated() {
+                                context.fill(markerPath, with: colors[index])
+                            }
+                        }else{
+                            context.fill(paths.1, with: .color(.white))
+                        }
                     }
                 }
                 let barPath = cgBarPathFromCoordinates(coordinates)
@@ -96,7 +109,8 @@ struct CurveCanvas: View {
             }//END MAIN CANVAS
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .layoutPriority(1)
-        }
+        }// END ZSTACK
+        .padding(5)
 
     }
     
@@ -112,7 +126,8 @@ struct CurveCanvas: View {
                 path.addLine(to: point)
             }
         }
-        let offsetLinePath = linePath.applying(CGAffineTransform(translationX: CGFloat(lineWidth), y: CGFloat(lineWidth)))
+        let offset = max(lineWidth, markerDiameter)
+        let offsetLinePath = linePath.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
         let scaledLinePath = offsetLinePath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
         
         let markerPath = Path { path in
@@ -121,17 +136,18 @@ struct CurveCanvas: View {
                 path.addEllipse(in: CGRect(origin: CGPoint(x: point.x - CGFloat(markerDiameter)/2, y: point.y - CGFloat(markerDiameter)/2), size: CGSize(width: CGFloat(markerDiameter), height: CGFloat(markerDiameter))))
             }
         }
-        let offsetMarkerPath = markerPath.applying(CGAffineTransform(translationX: CGFloat(lineWidth), y: CGFloat(lineWidth)))
+        let offsetMarkerPath = markerPath.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
         let scaledMarkerPath = offsetMarkerPath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
         
         return (scaledLinePath, scaledMarkerPath)
     }
     
-    private func cgSplitPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [Path] {
+    private func cgSplitPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> ([Path], [Path]) {
         let cgCoordinates = cgCoordinatesFromCartesian(coordinates)
         
-        var splitPaths: [Path] = []
         let splits = colors.count
+        var splitPaths: [Path] = []
+        var splitMarkerPaths: [Path] = []
         
         for i in 0..<splits {
             let startPoint = (cgCoordinates.count/splits) * i
@@ -142,15 +158,29 @@ struct CurveCanvas: View {
                 endPoint += 2
             }
             
-            let coordinateSlice = Array(cgCoordinates[startPoint...endPoint])
+            var coordinateSlice = Array(cgCoordinates[startPoint...endPoint])
             let path = Path { path in
                 path.addLines(coordinateSlice)
             }
-            let offsetPath = path.applying(CGAffineTransform(translationX: CGFloat(lineWidth), y: CGFloat(lineWidth)))
+            let offset = max(lineWidth, markerDiameter)
+            let offsetPath = path.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
             let scaledPath = offsetPath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
             splitPaths.append(scaledPath)
+            
+            if i != 0 {
+                coordinateSlice.removeFirst(1)
+            }
+            let markerPath = Path { path in
+                path.move(to: coordinateSlice[0])
+                for point in coordinateSlice {
+                    path.addEllipse(in: CGRect(origin: CGPoint(x: point.x - CGFloat(markerDiameter)/2, y: point.y - CGFloat(markerDiameter)/2), size: CGSize(width: CGFloat(markerDiameter), height: CGFloat(markerDiameter))))
+                }
+            }
+            let offsetMarkerPath = markerPath.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
+            let scaledMarkerPath = offsetMarkerPath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
+            splitMarkerPaths.append(scaledMarkerPath)
         }
-        return splitPaths
+        return (splitPaths, splitMarkerPaths)
     }
     
     private func cgTransitionPointsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [(CGPoint, CGPoint)] {
@@ -166,7 +196,8 @@ struct CurveCanvas: View {
             var scaledSlice: [CGPoint] = []
             let coordinateSlice = Array(cgCoordinates[startPoint...endPoint])
             for coordinate in coordinateSlice {
-                let offsetPoint = CGPoint(x: coordinate.x + CGFloat(lineWidth), y: coordinate.y + CGFloat(lineWidth))
+                let offset = max(lineWidth, markerDiameter)
+                let offsetPoint = CGPoint(x: coordinate.x + CGFloat(offset), y: coordinate.y + CGFloat(offset))
                 let scaledPoint = CGPoint(x: offsetPoint.x * CGFloat(scale) * cgScaling, y: offsetPoint.y * CGFloat(scale) * cgScaling)
                 scaledSlice.append(scaledPoint)
             }
@@ -176,7 +207,7 @@ struct CurveCanvas: View {
         return transitionPoints
     }
     
-    private func cgDepthPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> [Path] {
+    private func cgDepthPathsFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> ([Path], (Path, Path)) {
         let path = cgPathsFromCoordinates(coordinates).0
         let pathCount = Int(ceil(channelDepth/lineWidth))
         
@@ -196,7 +227,29 @@ struct CurveCanvas: View {
                 }
             }
         }
-        return depthPaths
+        let cgCoordinates = cgCoordinatesFromCartesian(coordinates)
+        let markerLinePath = Path { path in
+            path.move(to: cgCoordinates[0])
+            for (index, point) in cgCoordinates.enumerated() {
+                path.addLine(to: CGPoint(x: point.x, y: point.y + CGFloat(channelDepth)))
+                if index == cgCoordinates.count-1 { break }
+                path.move(to: cgCoordinates[index + 1])
+            }
+        }
+        let offset = max(lineWidth, markerDiameter)
+        let offsetLineMarkerPath = markerLinePath.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
+        let scaledMarkerLinePath = offsetLineMarkerPath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
+        
+        let markerEllipsePath = Path { path in
+            path.move(to: cgCoordinates[0])
+            for point in cgCoordinates {
+                path.addEllipse(in: CGRect(origin: CGPoint(x: point.x - CGFloat(markerDiameter)/2, y: point.y - CGFloat(markerDiameter)/2 + CGFloat(channelDepth)), size: CGSize(width: CGFloat(markerDiameter), height: CGFloat(markerDiameter))))
+            }
+        }
+        let offsetMarkerEllipsePath = markerEllipsePath.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
+        let scaledMarkerEllipsePath = offsetMarkerEllipsePath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
+        
+        return (depthPaths, (scaledMarkerLinePath, scaledMarkerEllipsePath))
     }
     
     private func cgBarPathFromCoordinates(_ coordinates: [(UInt16, UInt16)]) -> Path {
@@ -205,7 +258,8 @@ struct CurveCanvas: View {
         let barPath = Path{ path in
             path.addRoundedRect(in: roundedRect, cornerSize: CGSize(width: 5, height: 5))
         }
-        let offsetPath = barPath.applying(CGAffineTransform(translationX: CGFloat(lineWidth), y: CGFloat(lineWidth)))
+        let offset = max(lineWidth, markerDiameter)
+        let offsetPath = barPath.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
         let scaledPath = offsetPath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
         return scaledPath
     }
@@ -217,7 +271,8 @@ struct CurveCanvas: View {
             path.move(to: CGPoint(x: CGFloat(edgeLength), y: 0))
             path.addLine(to: CGPoint(x: CGFloat(edgeLength), y: CGFloat(edgeLength-2)))
         }
-        let offsetPath = measurePath.applying(CGAffineTransform(translationX: CGFloat(lineWidth), y: CGFloat(lineWidth)))
+        let offset = max(lineWidth, markerDiameter)
+        let offsetPath = measurePath.applying(CGAffineTransform(translationX: CGFloat(offset), y: CGFloat(offset)))
         let scaledPath = offsetPath.applying(CGAffineTransform(scaleX: cgScaling * CGFloat(scale), y: cgScaling * CGFloat(scale)))
         return scaledPath
     }

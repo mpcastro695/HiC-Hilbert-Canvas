@@ -2,13 +2,13 @@
 
 ##### 🔍 Submitted as a final project for CS50x
 
-A macOS app for visualizing 2D Hilbert curves. Adjust curve parameters such as the spacing between nodes, the width of the connecting paths, and the diameter of your node markers. See stats such as path length, path area, and path volume updated as you build your curve. Once it's how you like it, export a copy as a vector-based PDF.
+A macOS app for visualizing 2D Hilbert curves. Adjust curve parameters such as the spacing between nodes, the width of the connecting paths, and the diameter of your node markers. See stats such as path length, path area, and path volume updated as you build your curve. When finished, export a copy as a vector-based PDF.
 #### Demo:  <https://youtu.be/7LzKyFsDkqs>
 ![Alt text](<Screenshot.png>)
 
-Hilbert curves are unique in that they preserve locality among both 1D (unfolded) and 2D (folded) space. This holds true even as the size of curve grows -from a minimum of 16 nodes to a max of 16,384 in *Hi-C*.
+Hilbert curves preserve locality among both 1D (unfolded) and 2D (folded) space, even as the size of curve grows -from a minimum of 16 nodes to a max of 16,384 in *Hi-C*.
 
-*Hi-C* uses an iterative algorithm - detailed [here](/Chwedczuk_Archive.pdf) by Marcin Chwedczuk - for calculating cartesian (i.e., X, Y) coordinates given a node's 'Hilbert' index. It uses bit shifting to find the appropriate transformation(s) (e.g., translation, rotation, flipping) based on its position within higher-order curves. The original JavaScript code that **HilbertCurve.swift** is based on can be found [here](https://github.com/marcin-chwedczuk/hilbert_curve).
+*Hi-C* uses an iterative algorithm - detailed [here](/Chwedczuk_Archive.pdf) by Marcin Chwedczuk - for calculating cartesian (i.e., X, Y) coordinates given a node's 'Hilbert' index. It uses bit shifting to apply the appropriate transformation(s) to a 2x2 base curve (e.g., translation, rotation, flipping) based on its position within the larger curve. The original JavaScript code that **HilbertCurve.swift** is based on can be found [here](https://github.com/marcin-chwedczuk/hilbert_curve).
 
 *Hilbert Canvas* has three main components:
 * **HilbertCurve.swift**: A *Swift* implementation of Chwedczuck's algorithm that uses bit shifting to find cartesian coordinates for a given 'hilbert' node. 
