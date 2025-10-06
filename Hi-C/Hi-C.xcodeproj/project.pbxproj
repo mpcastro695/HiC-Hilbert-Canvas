@@ -13,6 +13,7 @@
 		E849D4732C5578EB00A96A32 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E849D4722C5578EB00A96A32 /* Preview Assets.xcassets */; };
 		E849D47B2C5579B100A96A32 /* HilbertCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = E849D47A2C5579B100A96A32 /* HilbertCurve.swift */; };
 		E849D47D2C557D2A00A96A32 /* CurveCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = E849D47C2C557D2A00A96A32 /* CurveCanvas.swift */; };
+		E8DB64922E9422FC00459C8C /* Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = E8DB64912E9422FC00459C8C /* Icon.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		E849D4742C5578EB00A96A32 /* Hilbert_Curve_Demo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Hilbert_Curve_Demo.entitlements; sourceTree = "<group>"; };
 		E849D47A2C5579B100A96A32 /* HilbertCurve.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HilbertCurve.swift; sourceTree = "<group>"; };
 		E849D47C2C557D2A00A96A32 /* CurveCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurveCanvas.swift; sourceTree = "<group>"; };
+		E8DB64912E9422FC00459C8C /* Icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Icon.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +72,7 @@
 		E849D4712C5578EB00A96A32 /* Preview Content */ = {
 			isa = PBXGroup;
 			children = (
+				E8DB64912E9422FC00459C8C /* Icon.icon */,
 				E849D4722C5578EB00A96A32 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
@@ -133,6 +136,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E8DB64922E9422FC00459C8C /* Icon.icon in Resources */,
 				E849D4732C5578EB00A96A32 /* Preview Assets.xcassets in Resources */,
 				E849D4702C5578EB00A96A32 /* Assets.xcassets in Resources */,
 			);
@@ -278,7 +282,7 @@
 		E849D4782C5578EB00A96A32 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Hi-C/Hilbert_Curve_Demo.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -289,8 +293,20 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Hi-C/Preview Content\"";
 				DEVELOPMENT_TEAM = 8LW84PBM34;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -309,7 +325,7 @@
 		E849D4792C5578EB00A96A32 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Hi-C/Hilbert_Curve_Demo.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -320,8 +336,20 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Hi-C/Preview Content\"";
 				DEVELOPMENT_TEAM = 8LW84PBM34;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (

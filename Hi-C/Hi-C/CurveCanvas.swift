@@ -60,12 +60,21 @@ struct CurveCanvas: View {
             // MARK: - Main Canvas
             Canvas { context, size in
                 if dxf {
-                    // Single Path
-                    context.stroke(paths.0, with: .color(.black), lineWidth:  CGFloat(lineWidth)*cgScaling*CGFloat(scale))
+                    // Convert stroked line into fillable shape.
+                    let strokedLine = paths.0.strokedPath(
+                        StrokeStyle(lineWidth: CGFloat(lineWidth) * cgScaling * CGFloat(scale))
+                    )
+
+                    // Union line shape with marker shapes.
+                    var combinedPath = strokedLine
                     if markers {
-                        context.fill(paths.1, with: .color(.black))
+                        let markersPath = paths.1
+                        combinedPath = pathUnion(strokedLine, with: markersPath)
                     }
-                }else{
+
+                    context.fill(combinedPath, with: .color(.black))
+                    
+                } else {
                     // Sectioned Path
                     for (index, path) in splitPath.0.enumerated() {
                         context.stroke(path, with: colors[index], lineWidth: CGFloat(lineWidth)*cgScaling*CGFloat(scale))
@@ -112,6 +121,14 @@ struct CurveCanvas: View {
         }// END ZSTACK
         .padding(5)
 
+    }
+    
+    private func pathUnion(_ path1: Path, with path2: Path) -> Path {
+        let cgPath1 = path1.cgPath
+        let cgPath2 = path2.cgPath
+        
+        let unionCGPath = cgPath1.union(cgPath2)
+        return Path(unionCGPath)
     }
     
     private func cgCoordinatesFromCartesian(_ coordinates: [(UInt16, UInt16)]) -> [CGPoint] {

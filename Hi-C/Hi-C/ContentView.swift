@@ -149,7 +149,7 @@ struct ContentView: View {
                         Spacer()
                         Button("Export PDF") {
                             if dxf{
-                                savePDFRendertoDisk(with: ImageRenderer(content: curveCanvas))
+                                savePDFRenderToDisk(with: ImageRenderer(content: curveCanvas))
                             }
                             else{
                                 showAlert = true
@@ -188,20 +188,26 @@ struct ContentView: View {
             .frame(minWidth: 600, minHeight: 480)
     }//END BODY
     
-    @MainActor private func savePDFRendertoDisk(with renderer: ImageRenderer<CurveCanvas>) {
-        let cgSpacing = CGFloat(spacing * 2)
-        print(cgSpacing)
-        renderer.render { size, renderContext in
-            if let downDirectory = try? FileManager.default.url(for: .downloadsDirectory, in: .userDomainMask, appropriateFor: nil, create: true){
-                
-                let date = Date()
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                let formattedDate = dateFormatter.string(from: date)
-                
-                let url = downDirectory.appendingPathComponent("My Curve \(formattedDate).pdf")
-                print("\(url)")
-                let cgEdgeLength = CGFloat(nIndices+2) * cgSpacing * CGFloat(scale)
+    @MainActor private func savePDFRenderToDisk(with renderer: ImageRenderer<CurveCanvas>) {
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.pdf]
+        
+        let date = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        let formattedDate = dateFormatter.string(from: date)
+        
+        savePanel.nameFieldStringValue = "My Curve \(formattedDate).pdf"
+        
+        savePanel.begin { response in
+            guard response == .OK, let url = savePanel.url else {
+                return
+            }
+            
+            let cgSpacing = CGFloat(self.spacing * 2)
+            print(cgSpacing)
+            renderer.render { size, renderContext in
+                let cgEdgeLength = CGFloat(self.nIndices+2) * cgSpacing * CGFloat(self.scale)
                 var mediaBox = CGRect(origin: .zero, size: CGSize(width: cgEdgeLength, height: cgEdgeLength))
                 print("Media Box Size: Height \(mediaBox.size.height), Width: \(mediaBox.size.width)")
                 guard let consumer = CGDataConsumer(url: url as CFURL),
