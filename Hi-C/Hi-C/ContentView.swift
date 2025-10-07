@@ -23,12 +23,22 @@ struct ContentView: View {
     @State private var scale: Float = 1.0
     @State private var showAlert: Bool = false
     
+    @State var isExporting: Bool = false
+    
     // UInt16 max = 65,535 nodes
     let nOptions: [UInt16] = [4, 8, 16, 32, 64, 128]
     
     var body: some View {
         let coordinates = HilbertCurve(nIndices: nIndices).coordinates
-        let curveCanvas = CurveCanvas(coordinates: coordinates, spacing: $spacing, markers: $markers, channels: $channels, channelDepth: $channelDepth, lineWidth: $lineWidth, markerDiameter: $markerDiameter, dxf: $dxf, scale: $scale)
+        let curveCanvas = CurveCanvas(coordinates: coordinates,
+                                      spacing: $spacing,
+                                      markers: $markers,
+                                      channels: $channels,
+                                      channelDepth: $channelDepth,
+                                      lineWidth: $lineWidth,
+                                      markerDiameter: $markerDiameter,
+                                      dxf: $dxf, scale: $scale,
+                                      isExporting: $isExporting)
         
             HStack{
                 VStack(alignment: .leading){
@@ -42,10 +52,12 @@ struct ContentView: View {
                             }
                         }
                         .font(.caption)
+                        .padding(.bottom)
                         
                         Slider(value: $lineWidth, in: 0.4...spacing-0.2, step: 0.2){
                             Text(String(format: "Width: %.1f mm", lineWidth))
                                 .font(.caption)
+                                .padding(.trailing, 5)
                         }
                         .onChange(of: lineWidth){ oldValue, newValue in
                             if markerDiameter < newValue {
@@ -56,6 +68,7 @@ struct ContentView: View {
                         Slider(value: $spacing, in: lineWidth+0.2...4.2, step: 0.2){
                             Text(String(format: "Spacing: %.1f mm", spacing))
                                 .font(.caption)
+                                .padding(.trailing, 5)
                         }
                         .padding(.bottom, 5)
                         .onChange(of: spacing){ oldValue, newValue in
@@ -76,6 +89,7 @@ struct ContentView: View {
                             Slider(value: $markerDiameter, in: 0.4...spacing, step: 0.2){
                                 Text(String(format: "Diameter: %.1f mm", markerDiameter))
                                     .font(.caption)
+                                    .padding(.trailing, 5)
                             }
                             .padding(.bottom, 5)
                         }
@@ -94,6 +108,7 @@ struct ContentView: View {
                             Slider(value: $channelDepth, in: 0.2...2.1, step: 0.2){
                                 Text(String(format: "Depth: %.1f mm", channelDepth))
                                     .font(.caption)
+                                    .padding(.trailing, 5)
                             }
                             .padding(.bottom, 5)
                         }
@@ -115,8 +130,9 @@ struct ContentView: View {
                         .padding(.bottom, 5)
                         
                         Slider(value: $scale, in: 0.2...5.0, step: 0.2){
-                            Text(String(format: "Scale: %.1f x", scale))
+                            Text(String(format: "Scale: %.1fx", scale))
                                 .font(.caption)
+                                .padding(.trailing, 5)
                         }
                         .padding(.bottom, 5)
                         
@@ -131,19 +147,39 @@ struct ContentView: View {
                     VStack(alignment: .leading){
                         Text("Nodes: \(nIndices * nIndices)")
                         Text(String(format: "Edge Length: %.1f mm", Float(nIndices) * spacing))
-                        Text(String(format: "Curve Area: %.1f mm2", pow(Float(nIndices) * spacing, 2)))
-                        Text(String(format: "Path Length: %.1f mm", CurveCanvas.pathLength(coordinates, spacing: spacing)))
+                        Text(String(format: "Base Area: %.1f mm²", pow(Float(nIndices) * spacing, 2)))
+                        Text(String(format: "Path Distance: %.1f mm", CurveCanvas.pathLength(coordinates, spacing: spacing)))
+                            .padding(.bottom)
+                        
+                        // Area calculations in mm2
+                        let manualLinePathArea = CurveCanvas.linePathArea(coordinates, spacing: spacing, pathWidth: lineWidth)
+                        let manualMarkerPathArea = CurveCanvas.markerPathArea(nIndices: Int(nIndices),
+                                                                        markerDiameter: markerDiameter,
+                                                                        pathWidth: lineWidth)
+                        if markers{
+                            let manualCombinedArea = (manualLinePathArea + manualMarkerPathArea)
+                            Text(String(format: "(Manual) Path Area: %.1f mm²", manualCombinedArea))
+                        }else{
+                            Text(String(format: "(Manual) Path Area: %.1f mm²", manualLinePathArea))
+                        }
+                        Text(String(format: "(Green's) Path Area: %.1f mm²", curveCanvas.area()))
+                            .padding(.bottom, 5)
+                        
+                        // Volume calulations in μL
                         if channels{
                             if markers{
-                                Text(String(format: "Path Volume: %.1f uL", (CurveCanvas.pathArea(coordinates, spacing: spacing, pathWidth: lineWidth) * channelDepth) + CurveCanvas.markerArea(nIndices: Int(nIndices), markerDiameter: markerDiameter, pathWidth: lineWidth) * channelDepth))
+                                let manualCombinedArea = (manualLinePathArea + manualMarkerPathArea)
+                                Text(String(format: "(Manual) Path Volume: %.1f μL", manualCombinedArea * channelDepth))
                             }
                             else{
-                                Text(String(format: "Path Volume: %.1f uL", CurveCanvas.pathArea(coordinates, spacing: spacing, pathWidth: lineWidth) * channelDepth))
+                                Text(String(format: "(Manual) Path Volume: %.1f uL", manualLinePathArea * channelDepth))
                             }
+                            Text(String(format: "(Green's) Path Volume: %.1f μL", (Float(curveCanvas.area()) * channelDepth)))
                         }
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    
                     Spacer()
                     HStack{
                         Spacer()
@@ -189,6 +225,7 @@ struct ContentView: View {
     }//END BODY
     
     @MainActor private func savePDFRenderToDisk(with renderer: ImageRenderer<CurveCanvas>) {
+        isExporting = true
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.pdf]
         
@@ -224,6 +261,7 @@ struct ContentView: View {
                 pdfContext.closePDF()
             }
         }
+        isExporting = false
     }
 }
 

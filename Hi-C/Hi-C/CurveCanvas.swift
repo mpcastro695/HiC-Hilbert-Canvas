@@ -20,6 +20,8 @@ struct CurveCanvas: View {
     @Binding var dxf: Bool
     @Binding var scale: Float
     
+    @Binding var isExporting: Bool
+    
     let cgScaling: CGFloat = 2
     let colors: [GraphicsContext.Shading] = [GraphicsContext.Shading.color(.red),
                                              GraphicsContext.Shading.color(.orange),
@@ -37,7 +39,7 @@ struct CurveCanvas: View {
         let transitionPoints = cgTransitionPointsFromCoordinates(coordinates)
         
         ZStack{
-            // MARK: - Depth Canvas
+            // MARK: - Depth Layer
             Canvas { context, size in
                 if channels{
                     let depthPaths = cgDepthPathsFromCoordinates(coordinates).0
@@ -57,7 +59,7 @@ struct CurveCanvas: View {
             .layoutPriority(0)
             .opacity(0.6)
             
-            // MARK: - Main Canvas
+            // MARK: - Main Layer
             Canvas { context, size in
                 if dxf {
                     // Convert stroked line into fillable shape.
@@ -72,7 +74,7 @@ struct CurveCanvas: View {
                         combinedPath = pathUnion(strokedLine, with: markersPath)
                     }
 
-                    context.fill(combinedPath, with: .color(.black))
+                    context.fill(combinedPath, with: .color(isExporting ? .black : .primary))
                     
                 } else {
                     // Sectioned Path
@@ -294,6 +296,78 @@ struct CurveCanvas: View {
         return scaledPath
     }
     
+    public func area() -> Double {
+        let paths = cgPathsFromCoordinates(coordinates)
+        let strokedLine = paths.0.strokedPath(
+            StrokeStyle(lineWidth: CGFloat(lineWidth) * cgScaling * CGFloat(scale))
+        )
+        
+        var combinedPath = strokedLine
+        if markers {
+            combinedPath = pathUnion(strokedLine, with: paths.1)
+        }
+        
+        let inverseScale = (1 / cgScaling) * (1 / CGFloat(scale))
+        let scaledPath = combinedPath.applying(CGAffineTransform(scaleX: inverseScale, y: inverseScale))
+        
+        return abs(signedArea(for: scaledPath))
+    }
+
+    private func signedArea(for path: Path) -> Double {
+        var area: CGFloat = 0.0
+        var currentPoint: CGPoint = .zero
+        var subpathStartPoint: CGPoint = .zero
+
+        path.cgPath.applyWithBlock { elementPointer in
+            let element = elementPointer.pointee
+            let points = element.points
+
+            switch element.type {
+            case .moveToPoint:
+                currentPoint = points[0]
+                subpathStartPoint = points[0]
+
+            case .addLineToPoint:
+                let p1 = points[0]
+                area += (currentPoint.x * p1.y - p1.x * currentPoint.y)
+                currentPoint = p1
+
+            case .addQuadCurveToPoint:
+                let p0 = currentPoint
+                let p1 = points[0] // control point
+                let p2 = points[1] // end point
+                
+                // Formula for quadratic Bezier segment contribution to Green's theorem integral
+                area += (2.0/3.0) * (p0.x * p1.y - p1.x * p0.y + p1.x * p2.y - p2.x * p1.y) + (p0.x * p2.y - p2.x * p0.y)
+                
+                currentPoint = p2
+
+            case .addCurveToPoint:
+                let p0 = currentPoint
+                let p1 = points[0] // control point 1
+                let p2 = points[1] // control point 2
+                let p3 = points[2] // end point
+
+                // Formula for cubic Bezier segment contribution to Green's theorem integral
+                area += (3.0/5.0) * (p0.x*p1.y - p1.x*p0.y + p1.x*p2.y - p2.x*p1.y + p2.x*p3.y - p3.x*p2.y)
+                area += (1.0/5.0) * (p0.x*p2.y - p2.x*p0.y + p1.x*p3.y - p3.x*p1.y)
+                area += (1.0/10.0) * (p0.x*p3.y - p3.x*p0.y)
+
+                currentPoint = p3
+
+            case .closeSubpath:
+                // Add a line segment back to the start of the subpath
+                area += (currentPoint.x * subpathStartPoint.y - subpathStartPoint.x * currentPoint.y)
+                currentPoint = subpathStartPoint
+                
+            @unknown default:
+                break
+            }
+        }
+        
+        return Double(area / 2.0)
+    }
+    
     private func pathEdgeLength(_ coordinates: [(UInt16, UInt16)]) -> Float {
         let nIndices = Float(sqrt(Double(coordinates.count)))
         let edgeLength = nIndices * (spacing)
@@ -314,13 +388,13 @@ struct CurveCanvas: View {
         return Float(distanceX + distanceY)
     }
     
-    static func pathArea(_ coordinates: [(UInt16, UInt16)], spacing: Float, pathWidth: Float) -> Float {
+    static func linePathArea(_ coordinates: [(UInt16, UInt16)], spacing: Float, pathWidth: Float) -> Float {
         let pathDistance = CurveCanvas.pathLength(coordinates, spacing: spacing)
         let pathArea = pathDistance * pathWidth
         return pathArea
     }
     
-    static func markerArea(nIndices: Int, markerDiameter: Float, pathWidth: Float) -> Float{
+    static func markerPathArea(nIndices: Int, markerDiameter: Float, pathWidth: Float) -> Float{
         if markerDiameter <= pathWidth { return 0 }
         
         // Find chord length for path edge through marker

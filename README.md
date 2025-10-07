@@ -33,11 +33,11 @@ As you change the curve's parameters, values are calculated for:
 
 * **Edge Length**: The length along the outer edge (in mm) of your curve
 
-* **Curve Area**: total area of your space-filling curve (in mm<sup>2</sup>)
+* **Base Area**: area of the base of your space-filling curve (in mm<sup>2</sup>)
 
 * **Path Length**: total length traveled along the main path connecting all nodes (in mm)
 
-* **Path Area**: total area of the path connecting all nodes (in mm<sup>2</sup>); if the **Markers** option is enabled, the result of `markerArea` is added per below:
+* **Path Area**: total area of the path connecting all nodes (in mm<sup>2</sup>); if the **Markers** option is enabled, the result of `markerArea` is added as below:
 
 ![Alt text](<MarkerArea.png>)
 
